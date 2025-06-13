@@ -24,6 +24,7 @@ const UsersPage: React.FC = () => {
     gender: 'Vyras',
     age: 0
   })
+  const [editIndex, setEditIndex] = useState<number | null>(null)
 
   useEffect(() => {
     const storedUsers = localStorage.getItem('users')
@@ -45,7 +46,15 @@ const UsersPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const newUsers = [...users, formData]
+    const newUsers = [...users]
+    
+    if (editIndex !== null) {
+      newUsers[editIndex] = formData
+      setEditIndex(null)
+    } else {
+      newUsers.push(formData)
+    }
+    
     setUsers(newUsers)
     localStorage.setItem('users', JSON.stringify(newUsers))
     setFormData({ name: '', role: '', gender: 'Vyras', age: 0 })
@@ -56,13 +65,31 @@ const UsersPage: React.FC = () => {
     newUsers.splice(index, 1)
     setUsers(newUsers)
     localStorage.setItem('users', JSON.stringify(newUsers))
+    
+    if (editIndex === index) {
+      setEditIndex(null)
+      setFormData({ name: '', role: '', gender: 'Vyras', age: 0 })
+    }
   }
 
-  const sortedUsers = [...users].sort((a, b) => {
-    if (typeof a[sortBy] === 'string' && typeof b[sortBy] === 'string') {
-      return (a[sortBy] as string).localeCompare(b[sortBy] as string)
+  const editUser = (index: number) => {
+    setEditIndex(index)
+    setFormData(users[index])
+  }
+
+  const cancelEdit = () => {
+    setEditIndex(null)
+    setFormData({ name: '', role: '', gender: 'Vyras', age: 0 })
+  }
+
+  
+  const indexedUsers = users.map((user, index) => ({ user, originalIndex: index }))
+  
+  const sortedIndexedUsers = [...indexedUsers].sort((a, b) => {
+    if (typeof a.user[sortBy] === 'string' && typeof b.user[sortBy] === 'string') {
+      return (a.user[sortBy] as string).localeCompare(b.user[sortBy] as string)
     }
-    return (a[sortBy] as number) - (b[sortBy] as number)
+    return (a.user[sortBy] as number) - (b.user[sortBy] as number)
   })
 
   return (
@@ -103,7 +130,10 @@ const UsersPage: React.FC = () => {
           value={formData.age || ''}
           onChange={handleInputChange}
         />
-        <button type="submit">Pridėti</button>
+        <button type="submit">{editIndex !== null ? 'Atnaujinti' : 'Pridėti'}</button>
+        {editIndex !== null && (
+          <button type="button" onClick={cancelEdit}>Atšaukti</button>
+        )}
       </form>
 
       <div className="sort-container">
@@ -131,14 +161,15 @@ const UsersPage: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {sortedUsers.map((user, index) => (
-            <tr key={index}>
+          {sortedIndexedUsers.map(({ user, originalIndex }) => (
+            <tr key={originalIndex}>
               <td>{user.name}</td>
               <td>{user.role}</td>
               <td>{user.gender}</td>
               <td>{user.age}</td>
               <td>
-                <button className="delete-btn" onClick={() => deleteUser(index)}>Šalinti</button>
+                <button className="edit-btn" onClick={() => editUser(originalIndex)}>Redaguoti</button>
+                <button className="delete-btn" onClick={() => deleteUser(originalIndex)}>Šalinti</button>
               </td>
             </tr>
           ))}
